@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text To Speech - FoodBot</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: url("https://images.unsplash.com/photo-1617895435390-27e927278a44?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80") no-repeat center center fixed;
+      background-size: cover;
+      z-index: 0;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 1;
+    }
+
+    .container {
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      width: 90%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #2c3e50;
+    }
+
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 15px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      resize: none;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #7f5af0;
+      box-shadow: 0 0 8px rgba(127, 90, 240, 0.3);
+    }
+
+    /* Speak button styles (original look) */
+    button.speak-button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 25px;
+      font-size: 16px;
+      font-weight: bold;
+      background-color: #7f5af0;
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    button.speak-button:hover {
+      background-color: #5936cf;
+      transform: scale(1.05);
+    }
+
+    button.speak-button:active {
+      transform: scale(0.97);
+    }
+
+    .icon {
+      font-size: 1.2em;
+    }
+
+    /* Back and Logout buttons styled as links side-by-side */
+    .button-row {
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    button.back-button, button.logout-button {
+      background: none;
+      border: none;
+      color: #1a73e8;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: normal;
+      padding: 0;
+      text-decoration: underline;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s ease;
+      font-family: inherit;
+    }
+
+    button.back-button:hover, button.logout-button:hover {
+      color: #0c47b7;
+    }
+
+    button.back-button:active, button.logout-button:active {
+      color: #083a8e;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-weight: bold;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .speaking-indicator {
+      display: none;
+      color: #ff6600;
+      font-weight: bold;
+      font-size: 18px;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔊 Text To Speech</h1>
+
+    <textarea id="textinput" placeholder="Type something and click 'Speak'..."></textarea>
+
+    <button onclick="speak()" class="speak-button">
+      <span class="icon">🎤</span> Speak
+    </button>
+
+    <div class="status" id="statusMsg"></div>
+    <div class="speaking-indicator" id="speakingIndicator">🔈 Speaking...</div>
+
+    <div class="button-row">
+     
+      <button onclick="logout()" class="logout-button">
+        🔒 Logout
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const TTS_API_KEY = "FQbKkjo43y74cnbzgdvotaEv3z1IYMxjakqqGy4a6L6p";
+    const TTS_URL = "https://api.au-syd.text-to-speech.watson.cloud.ibm.com/instances/67403f15-8dd1-4b81-9a6b-9a75e960d099";
+
+    async function speak() {
+      const text = document.getElementById("textinput").value.trim();
+      const statusMsg = document.getElementById("statusMsg");
+      const speakingIndicator = document.getElementById("speakingIndicator");
+
+      if (!text) {
+        statusMsg.style.color = 'red';
+        statusMsg.textContent = "⚠️ Please enter some text!";
+        speakingIndicator.style.display = "none";
+        return;
+      }
+
+      statusMsg.textContent = "";
+      speakingIndicator.style.display = "block";
+
+      try {
+        const response = await fetch(`${TTS_URL}/v1/synthesize?voice=en-US_AllisonV3Voice`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "audio/mp3",
+            "Authorization": "Basic " + btoa("apikey:" + TTS_API_KEY)
+          },
+          body: JSON.stringify({ text: text })
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+
+        audio.play();
+        audio.onended = () => {
+          speakingIndicator.style.display = "none";
+          statusMsg.style.color = '#27ae60';
+          statusMsg.textContent = "✅ Speech complete!";
+        };
+
+      } catch (error) {
+        console.error("TTS Error:", error);
+        statusMsg.style.color = "red";
+        statusMsg.textContent = "❌ Error generating speech!";
+        speakingIndicator.style.display = "none";
+      }
+    }
+
+   
+
+    function logout() {
+      // Change this to your actual logout URL or logic
+      // For now, just redirecting to a login or homepage:
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>
